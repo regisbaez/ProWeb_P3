@@ -12,15 +12,15 @@ public class Etiqueta {
     private Long id_etiqueta;
     private String etiqueta;
 
-    public boolean isActivo() {
-        return activo;
+    public boolean isval() {
+        return val;
     }
 
-    public void setActivo(boolean activo) {
-        this.activo = activo;
+    public void setval(boolean val) {
+        this.val = val;
     }
 
-    private boolean activo;
+    private boolean val;
 
     public Etiqueta(String etiqueta) {
         this.etiqueta = etiqueta;

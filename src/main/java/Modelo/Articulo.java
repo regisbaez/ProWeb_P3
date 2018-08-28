@@ -28,14 +28,15 @@ public class Articulo {
     }
 
     public boolean isActivo() {
-        return activo;
+        return val;
     }
 
-    public void setActivo(boolean activo) {
-        this.activo = activo;
+    public void setActivo(boolean val) {
+        this.val = val;
     }
 
-    private boolean activo;
+
+    private boolean val;
 
 
     public Articulo(String titulo, String cuerpo, Long autor, Date fecha, List<Comentario> listaComentarios, List<Etiqueta> listaEtiqueta) {

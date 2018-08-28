@@ -10,7 +10,7 @@ public class ArticuloM {
     private Sql2o conex = null;
 
     public void insertarArticulo(Articulo articulo) {
-        String sql = "insert into articulo (id, titulo, cuerpo, id_autor, fecha,activo) values(:id,:titulo,:cuerpo,:id_autor,:fecha,:val)";
+        String sql = "insert into articulo (id, titulo, cuerpo, id_autor, fecha,val) values(:id,:titulo,:cuerpo,:id_autor,:fecha,:val)";
         Conexion con = new Conexion();
         conex = con.getConexion();
         conex.open();
@@ -40,7 +40,7 @@ public class ArticuloM {
     }
 
     public void borrarArticulo(Long id){
-        String sql = "update articulo set activo=false where id="+id;
+        String sql = "update articulo set val=false where id="+id;
         Conexion con = new Conexion();
         conex = con.getConexion();
         conex.open();
@@ -48,7 +48,7 @@ public class ArticuloM {
     }
 
     public List<Articulo> listarArticulos(){
-        String sql = "SELECT * from articulo where activo = true order by id desc";
+        String sql = "SELECT * from articulo where val = true order by id desc";
         Conexion con = new Conexion();
         conex = con.getConexion();
         conex.open();
@@ -69,7 +69,7 @@ public class ArticuloM {
     }
 
     public void insertarArticuloEtiqueta(Long id_articulo,Long id_etiqueta){
-        String sql = "insert into articulo_etiquetas (id_articulo, id_etiqueta, activo) values(:id_articulo,:id_etiqueta,:activo)";
+        String sql = "insert into articulo_etiquetas (id_articulo, id_etiqueta, val) values(:id_articulo,:id_etiqueta,:val)";
         Conexion con = new Conexion();
         conex = con.getConexion();
         conex.open();
@@ -78,13 +78,13 @@ public class ArticuloM {
         conex.createQuery(sql)
                 .addParameter("id_articulo",id_articulo)
                 .addParameter("id_etiqueta",id_etiqueta)
-                .addParameter("activo",true)
+                .addParameter("val",true)
                 .executeUpdate();
 
     }
 
     public void insertarArticuloComentario(Long id_articulo,Long id_comentario){
-        String sql = "insert into articulo_comentarios (id_articulo, id_comentario, activo) values(:id_articulo,:id_comentario,:activo)";
+        String sql = "insert into articulo_comentarios (id_articulo, id_comentario, val) values(:id_articulo,:id_comentario,:val)";
         Conexion con = new Conexion();
         conex = con.getConexion();
         conex.open();
@@ -93,7 +93,7 @@ public class ArticuloM {
         conex.createQuery(sql)
                 .addParameter("id_articulo",id_articulo)
                 .addParameter("id_comentario",id_comentario)
-                .addParameter("activo",true)
+                .addParameter("val",true)
                 .executeUpdate();
 
     }
@@ -102,8 +102,7 @@ public class ArticuloM {
         Conexion con = new Conexion();
         conex = con.getConexion();
         conex.open();
-        String sql = "select * from articulo where id= '"+id+"' and activo = true";
-
+        String sql = "select * from articulo where id= '"+id+"' and val = true";
         return conex.createQuery(sql).executeAndFetchFirst(Articulo.class);
     }
 

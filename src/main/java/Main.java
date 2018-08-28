@@ -1,15 +1,18 @@
 import Datos.ArticuloM;
+import Datos.ComentarioM;
+import Datos.EtiquetaM;
 import Datos.UsuarioM;
 import Modelo.Articulo;
+import Modelo.Comentario;
+import Modelo.Etiqueta;
 import Modelo.Usuario;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import org.jasypt.util.text.BasicTextEncryptor;
+import spark.Session;
 
 import java.io.StringWriter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static spark.Spark.get;
 import static spark.Spark.post;
@@ -25,6 +28,10 @@ public class Main {
 
         UsuarioM usuarioDatos = new UsuarioM();
         ArticuloM articuloDatos = new ArticuloM();
+        EtiquetaM etiquetaDatos = new EtiquetaM();
+        ComentarioM comentarioDatos = new ComentarioM();
+
+        usuarioDatos.crearBD();
 
         if(usuarioDatos.contarUsuarios()==0){
             Usuario u = new Usuario("admin","admin", "password",true,true);
@@ -62,13 +69,32 @@ public class Main {
             return writer;
         });
 
+        get("/logout", (req, res) -> {
+            StringWriter writer = new StringWriter();
+            Map<String, Object> atr = new HashMap<>();
+
+            Session ses = req.session(true);
+            ses.invalidate();
+            res.removeCookie("username");
+            res.redirect("/");
+            return writer;
+        });
+
         get("/home", (req, res) -> {
 
             StringWriter writer = new StringWriter();
             Map<String, Object> atr = new HashMap<>();
             Template t = configuration.getTemplate("Templates/home.ftl");
             Usuario usuario = req.session(true).attribute("usuario");
+
+            List<Articulo> articuloList = articuloDatos.listarArticulos();
+            for(int i = 0; i < articuloList.size(); i++){
+                articuloList.get(i).setListaEtiqueta(etiquetaDatos.getEtiquetas(articuloList.get(i).getId()));
+            }
+
+
             atr.put("usuario",usuario);
+            atr.put("articulos",articuloList);
             t.process(atr, writer);
             return writer;
         });
@@ -78,9 +104,70 @@ public class Main {
             StringWriter writer = new StringWriter();
             Map<String, Object> atr = new HashMap<>();
             Template t = configuration.getTemplate("Templates/crearPost.ftl");
+            t.process(atr,writer);
+            return writer;
+        });
+
+        get("/articulo/:id", (req, res) -> {
+
             Usuario usuario = req.session(true).attribute("usuario");
-            t.process(null, writer);
+            StringWriter writer = new StringWriter();
+            Map<String, Object> atr = new HashMap<>();
+            Template t = configuration.getTemplate("Templates/articulo.ftl");
+            String id = req.params("id");
+            Articulo a = articuloDatos.getArticuloId(Long.parseLong(id));
+            a.setListaEtiqueta(etiquetaDatos.getEtiquetas(a.getId()));
+            a.setListaComentarios(comentarioDatos.getComentario(a.getId()));
+            ArrayList<String> usuarios = new ArrayList<>();
+
+            atr.put("articulo",a);
+            atr.put("autor",usuarioDatos.getUsuarioId(a.getAutor()));
+            atr.put("usuarioList",usuarios);
             atr.put("usuario",usuario);
+            t.process(atr,writer);
+            return writer;
+        });
+
+        post("/crearPost", (req, res) -> {
+
+            StringWriter writer = new StringWriter();
+            Map<String, Object> atr = new HashMap<>();
+            Template t = configuration.getTemplate("Templates/crearPost.ftl");
+            Usuario usuario = req.session(true).attribute("usuario");
+
+            String etiquetas = req.queryParams("listaEtiqueta");
+            String titulo = req.queryParams("titulo");
+            String cuerpo = req.queryParams("cuerpo");
+            List<String> listaEtiquetas = Arrays.asList(etiquetas.split(","));
+
+            Long idArticulo = 0L;
+            if(articuloDatos.countArticulos() != 0){
+                idArticulo = articuloDatos.lastArticulo();
+
+            }
+            System.out.println(idArticulo);
+            Long countEtiqueta = 0L;
+            if(etiquetaDatos.countEtiquetas() != 0){
+                countEtiqueta =  etiquetaDatos.lastEtiqueta();
+            }
+            ArrayList<Etiqueta> et =  new ArrayList<>();
+            for(int i = 0; i < listaEtiquetas.size(); i++){
+                Etiqueta e = new Etiqueta(listaEtiquetas.get(i));
+                et.add(e);
+                etiquetaDatos.insertarEtiqueta(e);
+            }
+
+            Date d = new Date(System.currentTimeMillis());
+
+            Articulo a =  new Articulo(titulo,cuerpo, usuario.getId(),d,null,et);
+            articuloDatos.insertarArticulo(a);
+
+            for(int i = 0; i < listaEtiquetas.size(); i++){
+                articuloDatos.insertarArticuloEtiqueta(idArticulo,countEtiqueta);
+                countEtiqueta++;
+            }
+
+            res.redirect("/");
             return writer;
         });
 
@@ -128,5 +215,81 @@ public class Main {
 
             return "";
         });
+        post("articulo/:id/comentar", (req, res) -> {
+            Long idArticulo = Long.parseLong(req.params("id"));
+            String comentario = req.queryParams("comentario");
+            Usuario autor = req.session(true).attribute("usuario");
+            Comentario c = new Comentario(comentario,autor.getId());
+
+            Long countComentario = 0L;
+            if(comentarioDatos.countComentario() != 0){
+                countComentario =  comentarioDatos.lastComentario();
+            }
+            comentarioDatos.insertarComentario(c);
+            articuloDatos.insertarArticuloComentario(idArticulo,countComentario);
+            res.redirect("/articulo/" + idArticulo);
+            return null;
+        });
+
+        get("/eliminar/:id", (req, res) -> {
+            Usuario autor = req.session(true).attribute("usuario");
+
+            if (autor.isAdministrator() || autor.isAutor()) {
+                StringWriter writer = new StringWriter();
+                Map<String, Object> atributos = new HashMap<>();
+                Template template = configuration.getTemplate("templates/eliminarArticulo.ftl");
+
+                Articulo articulo = articuloDatos.getArticuloId(Long.parseLong(req.params("id")));
+
+                atributos.put("articulo", articulo);
+                template.process(atributos, writer);
+
+                return writer;
+            }
+            res.redirect("/");
+            return null;
+        });
+
+
+        get("/editar/:id", (req, res) -> {
+            StringWriter writer = new StringWriter();
+            Map<String, Object> atributos = new HashMap<>();
+            Template template = configuration.getTemplate("templates/editarArticulo.ftl");
+            Usuario autor = req.session(true).attribute("usuario");
+
+
+            Articulo articulo = articuloDatos.getArticuloId(Long.parseLong(req.params("id")));
+
+            atributos.put("articulo", articulo);
+            atributos.put("autor", autor);
+            template.process(atributos, writer);
+
+            return writer;
+        });
+
+
+    post("/eliminar/:id", (req, res) -> {
+        Usuario autor = req.session(true).attribute("usuario");
+
+        if (autor.isAdministrator() || autor.isAutor()) {
+            articuloDatos.borrarArticulo(Long.valueOf(req.params("id")));
+        }
+        res.redirect("/");
+        return null;
+    });
+
+
+    post("/editar/:id", (req, res) -> {
+        long id = Integer.parseInt(req.params("id"));
+        String titulo = req.queryParams("titulo");
+        String cuerpo = req.queryParams("cuerpo");
+
+        articuloDatos.editarArticulo(id,titulo,cuerpo);
+
+        res.redirect("/");
+
+        return null;
+    });
     }
+
     }
