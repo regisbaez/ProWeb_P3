@@ -14,9 +14,7 @@ import spark.Session;
 import java.io.StringWriter;
 import java.util.*;
 
-import static spark.Spark.get;
-import static spark.Spark.post;
-import static spark.Spark.staticFiles;
+import static spark.Spark.*;
 
 public class Main {
 
@@ -32,6 +30,20 @@ public class Main {
         ComentarioM comentarioDatos = new ComentarioM();
 
         usuarioDatos.crearBD();
+
+        before("/crearPost", (request, response) -> {
+            Usuario usuario = request.session(true).attribute("usuario");
+            if (usuario == null || (!usuario.isAdministrator())) {
+                response.redirect("/");
+            }
+        });
+
+        before("/articulo/:id/comentar", (request, response) -> {
+            Usuario usuario = request.session(true).attribute("usuario");
+            if (usuario == null || (!usuario.isAdministrator())) {
+                response.redirect("/");
+            }
+        });
 
         if(usuarioDatos.contarUsuarios()==0){
             Usuario u = new Usuario("admin","admin", "password",true,true);
